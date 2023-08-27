@@ -1,4 +1,5 @@
 package scheduler;
+
 import java.util.*;
 
 /*
@@ -26,131 +27,166 @@ import java.util.*;
  */
 
 class SchedulingConflictException extends RuntimeException {
-    public SchedulingConflictException(String message) {
-        super(message);
-    }
+	public SchedulingConflictException(String message) {
+		super(message);
+	}
 }
 
 enum DayOfWeek {
-    MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
+	MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
 }
 
 class Event {
-    private String eventName;
-    private int hour;
-    private int minute;
+	private String eventName;
+	private int hour;
+	private int minute;
 
-    public Event(String eventName, int hour, int minute) {
-        this.eventName = eventName;
-        this.hour = hour;
-        this.minute = minute;
-    }
+	public Event(String eventName, int hour, int minute) {
+		this.eventName = eventName;
+		this.hour = hour;
+		this.minute = minute;
+	}
 
-    public int getHour() {
-        return hour;
-    }
+	public int getHour() {
+		return hour;
+	}
 
-    public int getMinute() {
-        return minute;
-    }
+	public int getMinute() {
+		return minute;
+	}
 
-    @Override
-    public String toString() {
-        return String.format("%02d:%02d - %s", hour, minute, eventName);
-    }
+	@Override
+	public String toString() {
+		return String.format("%02d:%02d - %s", hour, minute, eventName);
+	}
 }
 
 class DaySchedule {
-    private List<Event> events;
+	private List<Event> events;
 
-    public DaySchedule() {
-        events = new ArrayList<>();
-    }
+	public DaySchedule() {
+		events = new ArrayList<>();
+	}
 
-    public void addEvent(Event event) {
-        for (Event existingEvent : events) {
-            if (existingEvent.getHour() == event.getHour() && existingEvent.getMinute() == event.getMinute()) {
-                throw new SchedulingConflictException("There is already another event at this time.");
-            }
-        }
-        events.add(event);
-        events.sort(Comparator.comparingInt(event1 -> event1.getHour() * 60 + event1.getMinute()));
-    }
+	public void addEvent(Event event) {
+		for (Event existingEvent : events) {
+			if (existingEvent.getHour() == event.getHour() && existingEvent.getMinute() == event.getMinute()) {
+				throw new SchedulingConflictException("There is already another event at this time.");
+			}
+		}
+		events.add(event);
+		sortEvents();
+	}
 
-    public List<Event> getEvents() {
-        return events;
-    }
+	private void sortEvents() {
+		for (int i = 0; i < events.size() - 1; i++) {
+			for (int j = i + 1; j < events.size(); j++) {
+				Event eventI = events.get(i);
+				Event eventJ = events.get(j);
+				if (eventJ.getHour() < eventI.getHour()
+						|| (eventJ.getHour() == eventI.getHour() && eventJ.getMinute() < eventI.getMinute())) {
+					Collections.swap(events, i, j);
+				}
+			}
+		}
+	}
+
+	public List<Event> getEvents() {
+		return events;
+	}
 }
 
 public class Scheduler {
-    private DaySchedule[] weeklySchedule;
+	private DaySchedule[] weeklySchedule;
 
-    public Scheduler() {
-        weeklySchedule = new DaySchedule[DayOfWeek.values().length];
-        for (int i = 0; i < weeklySchedule.length; i++) {
-            weeklySchedule[i] = new DaySchedule();
-        }
-    }
+	public Scheduler() {
+		weeklySchedule = new DaySchedule[DayOfWeek.values().length];
+		for (int i = 0; i < weeklySchedule.length; i++) {
+			weeklySchedule[i] = new DaySchedule();
+		}
+	}
 
-    public void addEvent(DayOfWeek day, Event event) {
-        weeklySchedule[day.ordinal()].addEvent(event);
-    }
+	private int getDayIndex(DayOfWeek day) {
+		switch (day) {
+		case MONDAY:
+			return 0;
+		case TUESDAY:
+			return 1;
+		case WEDNESDAY:
+			return 2;
+		case THURSDAY:
+			return 3;
+		case FRIDAY:
+			return 4;
+		case SATURDAY:
+			return 5;
+		case SUNDAY:
+			return 6;
+		default:
+			throw new IllegalArgumentException("Invalid day");
+		}
+	}
 
-    public List<Event> viewEvents(DayOfWeek day) {
-        return weeklySchedule[day.ordinal()].getEvents();
-    }
+	public void addEvent(DayOfWeek day, Event event) {
+		int dayIndex = getDayIndex(day);
+		weeklySchedule[dayIndex].addEvent(event);
+	}
 
-    public void removeEvent(DayOfWeek day, int index) {
-        List<Event> events = weeklySchedule[day.ordinal()].getEvents();
-        if (index >= 0 && index < events.size()) {
-            events.remove(index);
-        } else {
-            System.out.println("That index doesn't exist.");
-        }
-    }
+	public List<Event> viewEvents(DayOfWeek day) {
+		int dayIndex = getDayIndex(day);
+		return weeklySchedule[dayIndex].getEvents();
+	}
 
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        Scheduler scheduler = new Scheduler();
+	public void removeEvent(DayOfWeek day, int index) {
+		int dayIndex = getDayIndex(day);
+		List<Event> events = weeklySchedule[dayIndex].getEvents();
+		if (index >= 0 && index < events.size()) {
+			events.remove(index);
+		} else {
+			System.out.println("That index doesn't exist.");
+		}
+	}
 
-        while (true) {
-            System.out.println("1. Add Event\n2. View Events\n3. Remove Event\n4. Exit");
-            int choice = scanner.nextInt();
+	public static void main(String[] args) {
+		Scanner scanner = new Scanner(System.in);
+		Scheduler scheduler = new Scheduler();
 
-            if (choice == 4) {
-                break;
-            }
+		while (true) {
+			System.out.println("\n1. Add Event\n2. View Events\n3. Remove Event\n4. Exit");
+			int choice = scanner.nextInt();
 
-            System.out.println("Enter day (MONDAY, TUESDAY, ..., SUNDAY): ");
-            DayOfWeek day = DayOfWeek.valueOf(scanner.next());
+			if (choice == 4) {
+				break;
+			}
 
-            if (choice == 1) {
-                System.out.println("Enter event name: ");
-                String eventName = scanner.next();
-                System.out.println("Enter hour and minute (separated by space): ");
-                int hour = scanner.nextInt();
-                int minute = scanner.nextInt();
-                Event event = new Event(eventName, hour, minute);
-                scheduler.addEvent(day, event);
-                System.out.println("Event added.");
-            } else if (choice == 2) {
-                List<Event> events = scheduler.viewEvents(day);
-                if (events.isEmpty()) {
-                    System.out.println("No events for " + day);
-                } else {
-                    System.out.println("Events for " + day + ":");
-                    for (int i = 0; i < events.size(); i++) {
-                        System.out.println(i + ". " + events.get(i));
-                    }
-                }
-            } else if (choice == 3) {
-                System.out.println("Enter index of event to remove: ");
-                int index = scanner.nextInt();
-                scheduler.removeEvent(day, index);
-                System.out.println("Event removed.");
-            }
-        }
-    }
+			System.out.println("Enter day (MONDAY, TUESDAY, ..., SUNDAY): ");
+			DayOfWeek day = DayOfWeek.valueOf(scanner.next());
+
+			if (choice == 1) {
+				System.out.println("Enter event name: ");
+				String eventName = scanner.next();
+				System.out.println("Enter hour and minute (separated by space): ");
+				int hour = scanner.nextInt();
+				int minute = scanner.nextInt();
+				Event event = new Event(eventName, hour, minute);
+				scheduler.addEvent(day, event);
+				System.out.println("Event added.");
+			} else if (choice == 2) {
+				List<Event> events = scheduler.viewEvents(day);
+				if (events.isEmpty()) {
+					System.out.println("No events for " + day);
+				} else {
+					System.out.println("Events for " + day + ":");
+					for (int i = 0; i < events.size(); i++) {
+						System.out.println(i + ". " + events.get(i));
+					}
+				}
+			} else if (choice == 3) {
+				System.out.println("Enter index of event to remove: ");
+				int index = scanner.nextInt();
+				scheduler.removeEvent(day, index);
+				System.out.println("Event removed.");
+			}
+		}
+	}
 }
-
-
